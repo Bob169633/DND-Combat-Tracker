@@ -1,255 +1,211 @@
 import tkinter as tk
-from tkinter import filedialog
-from tkinter import simpledialog
-import random
-import os
-import math as m
+from tkinter import filedialog, messagebox, simpledialog
 
-nl = '\n'
-t = '\t'
-combat = []
-curr = 0
-turns = 0
-Round = 1
-priority = 0
-currChar = f"***"
-maxNameLength = 0
-
-# Character objects for combat
-class character:
-  def __init__(self, name, chType, bonus, initiative):
-    global priority
-    self.name = name
-    self.chType = chType
-    self.status = []
-    if chType == "LA":
-      initiative = 20
-      priority = .3
-    elif chType == "PC":
-      priority = .2
-    elif chType == "EN":
-      priority = .1
-    elif chType == "NP":
-      priority = 0
-    self.initiative = initiative+bonus+priority if initiative+bonus+priority > 0 else 0+priority
-    
-  def __str__(self):
-    return f"{self.name}{t}{t}{t}|| Ch.Type: {self.chType} ||{t}|| CI: {m.floor(self.initiative)}"
+from Add_Characters_Window import AddCharactersWindow
+from Combat_State import CombatState
+from Display_Combat import CombatCardDisplay
+from Save_Load_Combat import load_combat_from_csv, save_combat_to_csv
+from Status_Effects import add_status, tick_statuses_for_turn
 
 
+BACKGROUND_COLORS = [
+  "black",
+  "gray15",
+  "dark slate gray",
+  "navy",
+  "midnight blue",
+  "maroon",
+  "dark green",
+  "saddle brown"
+]
 
-# Calls Character init function and allows Character object to be named from name variable
-def createChar(name="", chType="", bonus=0, initiative=0 ):
-  globals()[name] = character(name, chType, bonus, initiative)
-  combat.append(globals()[name])
-  
-
-# Displays all characters currently in combat
-def displayCombat():
-  global name_width, type_width, initiative_width
-  overview = f">> Round #{Round} <<        >> Turn #{curr+1} <<       >> Total Turn #{turns+1} <<"
-  listbox.delete(0,tk.END)
-  listbox.insert(tk.END, overview)
-  listbox.insert(tk.END, "-" * (name_width + type_width + initiative_width))  # Separator line
-  row_form = "{:<" + str(name_width) + "} {:<" + str(type_width) + "} {:<" + str(initiative_width) + "}"
-  header = row_form.format("Name", "Ch. Type", "Initiative")
-  listbox.insert(tk.END, header)
-  listbox.insert(tk.END, "-" * (name_width + type_width + initiative_width))  # Separator line
-  for i in range(len(combat)):
-    form = row_form.format(combat[i].name, combat[i].chType, m.floor(combat[i].initiative))
-    if curr == i:
-      listbox.insert(tk.END, currChar)
-      listbox.insert(tk.END, form)
-      if len(combat[i].status) != 0:
-        for n in range(m.floor(len(combat[i].status)/3)):
-          statuses = combat[i].status[3*n] + " " + str(combat[i].status[3*n+1])
-          listbox.insert(tk.END, statuses)
-      listbox.insert(tk.END, currChar)
-    else:
-      listbox.insert(tk.END, form)
-      if len(combat[i].status) != 0:
-        for n in range(m.floor(len(combat[i].status)/3)):
-          statuses = "----" + combat[i].status[3*n] + " " + str(combat[i].status[3*n+1])
-          listbox.insert(tk.END, statuses)
-      listbox.insert(tk.END, "")
+state = CombatState()
+selected_background_color = None
 
 
-# Sorts all characters in combat by decreasing initiative
-def sortCombat():
-  swapped = True
-  if len(combat) == 1:
-    swapped = False
-  
-  while swapped:
-    swapped = False
-    for i in range (len(combat)-1):
-      if combat[i].initiative < combat[i+1].initiative:
-        temp = combat[i]
-        combat[i] = combat[i+1]
-        combat[i+1] = temp
-        swapped = True
-  displayCombat()
+def refresh_display():
+  combat_display.display_combat_cards(
+    state,
+    background_color=selected_background_color.get()
+  )
 
 
-# Moves combat to next character's turn
-def nextChar():
-  global curr
-  global Round
-  global turns
-  turns += 1
-  if curr == len(combat)-1:
-    curr = 0
-    Round += 1
-  else:
-    curr += 1
-  for i in range(len(combat)):
-    if len(combat[i].status) != 0:
-      for n in range(m.floor(len(combat[i].status)/3)):
-        if combat[i].status[3*n+2] == curr:
-          combat[i].status[3*n+1] -= 1
-          if combat[i].status[3*n+1] == 0:
-            combat[i].status.remove(combat[i].status[3*n])
-            combat[i].status.remove(combat[i].status[3*n])
-            combat[i].status.remove(combat[i].status[3*n])
-          n -= 3
-  displayCombat()
+def start_combat():
+  state.sort_combat()
+  refresh_display()
 
 
-# Add character to combat after combat has started
-def addChar():
-  title = "Add Char"
-  t2 = "Add Init"
-  p2 = "Init"
-  prompt = "Name,Type,Bonus"
-  newChar = simpledialog.askstring(title, prompt)
-  NAME, CHTYPE, BONUS = newChar.split(',')
-  if CHTYPE != 'PC':
-    if CHTYPE == 'LA':
-      INIT = 20
-    else:
-      INIT = random.randint(1,20)
-  else:
-    INIT = simpledialog.askinteger(t2, p2)
+def return_to_original_sort():
+  state.sort_combat()
+  refresh_display()
+
+
+def next_character():
+  state.next_character()
+  tick_statuses_for_turn(state.combat, state.curr)
+  refresh_display()
+
+
+def reorder_characters(old_index, new_index):
+  state.move_character(old_index, new_index)
+  refresh_display()
+
+
+def open_add_characters_window():
+  AddCharactersWindow(root, add_characters_to_combat)
+
+
+def add_characters_to_combat(characters):
+  state.add_characters(characters)
+  refresh_display()
+
+
+def add_special_status():
+  character_name = simpledialog.askstring("Select Character", "Enter Character Name")
+
+  if not character_name:
+    return
+
+  special = simpledialog.askstring("Effect and Duration", "Effect,Duration")
+
+  if not special:
+    return
+
   try:
-    BONUS = int(BONUS)
+    effect, duration = [part.strip() for part in special.split(",")]
+    duration = int(duration)
   except ValueError:
-    pass
-  createChar(NAME, CHTYPE, BONUS, INIT)
-  sortCombat()
+    return
+
+  add_status(state.combat, character_name, effect, duration, state.curr)
+  refresh_display()
 
 
-# Allows special statuses that are applied to characters be shown in combat display
-def specialStatus():
-  global combat
-  t1 = "Select Character"
-  p1 = "Enter Character Name"
-  t2 = "Effect and Duration"
-  p2 = "Effect,Duration"
-  char = simpledialog.askstring(t1,p1)
-  special = simpledialog.askstring(t2,p2)
-  EFF, DUR = special.split(',')
-  APP = curr
+def save_combat():
+  filepath = filedialog.asksaveasfilename(
+    title="Save Combat",
+    defaultextension=".csv",
+    filetypes=[("CSV Files", "*.csv"), ("All Files", "*.*")]
+  )
+
+  if not filepath:
+    return
+
   try:
-    DUR = int(DUR)
-  except ValueError:
-    pass
-  for ch in combat:
-    if ch.name == char:
-      ch.status.append(EFF)
-      ch.status.append(DUR)
-      ch.status.append(APP)
-      break
-  sortCombat()
-  
+    save_combat_to_csv(filepath, state)
+  except Exception as error:
+    messagebox.showerror("Save Failed", f"Combat could not be saved:\n{error}")
 
 
-# Open the file for any .txt file with character data
-def open_file(f):
-  fpath = filedialog.askdirectory()
-  filepath = os.path.join(fpath, f)
+def load_combat():
+  filepath = filedialog.askopenfilename(
+    title="Load Combat",
+    filetypes=[("CSV Files", "*.csv"), ("All Files", "*.*")]
+  )
+
+  if not filepath:
+    return
+
   try:
-    with open(filepath, 'r') as file:
-      for line in file:
-        try:
-          NAME, CHTYPE, BONUS, INIT = line.strip().split(',')
-        except ValueError:
-          NAME, CHTYPE, BONUS = line.strip().split(',')
-        if CHTYPE != 'PC':
-          if CHTYPE == 'LA':
-            INIT = 20
-          else:
-            INIT = random.randint(1,20)
-        try:
-          INIT = int(INIT)
-          BONUS = int(BONUS)
-        except ValueError:
-          pass
-        createChar(NAME, CHTYPE, BONUS, INIT)
-  except Exception as e:
-    print(e)
+    loaded_state = load_combat_from_csv(filepath)
+
+    state.load_state(
+      loaded_state["combat"],
+      loaded_state["round"],
+      loaded_state["curr"],
+      loaded_state["turns"]
+    )
+
+    refresh_display()
+
+  except Exception as error:
+    messagebox.showerror("Load Failed", f"Combat could not be loaded:\n{error}")
 
 
-# Specify files to be added into combat
-# Player files should follow the NAME,CHTYPE,BONUS,INIT format
-# Non-player files should follow the NAME,CHTYPE,BONUS format
-# The CHTYPE should be 1 of 4 options; PC, NPC, EN, or LA
-player = "players.txt"
-enemy = ["bandits.txt"]
+def change_background_color(*args):
+  color = selected_background_color.get()
+
+  root.configure(bg=color)
+  button_area.configure(bg=color)
+  button_frame.configure(bg=color)
+  save_load_frame.configure(bg=color)
+  background_label.configure(bg=color)
+
+  refresh_display()
 
 
-
-
-# Tkinter GUI window creation
 root = tk.Tk(screenName="Combat Tracker", baseName="Tracker", className="Combat Round Tracker", useTk=1)
+root.title("Combat Round Tracker")
+root.configure(bg="black")
 
-# Call open_file as many times as needed for each file
-for item in enemy:
-  open_file(item)
-open_file(player)
-maxNameLength = max(len(char.name) for char in combat)
+selected_background_color = tk.StringVar(value="black")
 
-# Start Combat Button
-start_button = tk.Button(root, text="Start Combat", width=50, command=sortCombat)
-start_button.pack()
+button_area = tk.Frame(root, bg="black")
+button_area.pack(fill=tk.X, padx=10, pady=5)
 
-# Add Character Button
-add_character = tk.Button(root, text="Add Character", width=50, command=addChar)
-add_character.pack()
+button_frame = tk.Frame(button_area, bg="black")
+button_frame.pack(anchor=tk.CENTER)
 
-# Next Character Button
-next_character = tk.Button(root, text="Next Character", width=50, command=nextChar)
-next_character.pack()
+start_button = tk.Button(button_frame, text="Start Combat", width=18, command=start_combat)
+start_button.pack(side=tk.LEFT, padx=3)
 
-# Special Status Button
-status_button = tk.Button(root, text="Special Stats", width=50, command = specialStatus)
-status_button.pack()
+original_sort_button = tk.Button(
+  button_frame,
+  text="Return to Original Sort",
+  width=20,
+  command=return_to_original_sort
+)
+original_sort_button.pack(side=tk.LEFT, padx=3)
 
-# Refresh Display
-refresh_button = tk.Button(root, text="Refresh Display", width=50, command=sortCombat)
-refresh_button.pack()
+add_character_button = tk.Button(
+  button_frame,
+  text="Add Characters",
+  width=18,
+  command=open_add_characters_window
+)
+add_character_button.pack(side=tk.LEFT, padx=3)
 
-# Define column widths
-name_width = maxNameLength + 2  # Extra padding
-type_width = 12
-initiative_width = 12
+next_character_button = tk.Button(button_frame, text="Next Character", width=18, command=next_character)
+next_character_button.pack(side=tk.LEFT, padx=3)
 
-# Frame to hold Listbox and Scrollbar
-frame = tk.Frame(root)
-frame.pack(padx=10, pady=10)
+status_button = tk.Button(button_frame, text="Special Status", width=18, command=add_special_status)
+status_button.pack(side=tk.LEFT, padx=3)
 
-# Create a Listbox inside the frame
-listbox = tk.Listbox(frame, width=100, height=30, yscrollcommand=lambda *args: scrollbar.set(*args))
-listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+refresh_button = tk.Button(button_frame, text="Refresh Display", width=18, command=refresh_display)
+refresh_button.pack(side=tk.LEFT, padx=3)
 
-# Add Scrollbar
-scrollbar = tk.Scrollbar(frame, orient=tk.VERTICAL, command=listbox.yview)
-scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+save_load_frame = tk.Frame(button_area, bg="black")
+save_load_frame.pack(anchor=tk.CENTER, pady=(5, 0))
 
-# Link Listbox to Scrollbar
-listbox.config(yscrollcommand=scrollbar.set)
+save_button = tk.Button(save_load_frame, text="Save Combat", width=18, command=save_combat)
+save_button.pack(side=tk.LEFT, padx=3)
 
-# Quit Button
-button = tk.Button(root, text="Quit", width=50, command=root.destroy)
-button.pack()
+load_button = tk.Button(save_load_frame, text="Load Combat", width=18, command=load_combat)
+load_button.pack(side=tk.LEFT, padx=3)
+
+background_label = tk.Label(
+  save_load_frame,
+  text="Background:",
+  bg="black",
+  fg="white"
+)
+background_label.pack(side=tk.LEFT, padx=(15, 3))
+
+background_menu = tk.OptionMenu(
+  save_load_frame,
+  selected_background_color,
+  *BACKGROUND_COLORS,
+  command=change_background_color
+)
+background_menu.config(width=14)
+background_menu.pack(side=tk.LEFT, padx=3)
+
+combat_display = CombatCardDisplay(
+  root,
+  on_reorder=reorder_characters,
+  background_color="black"
+)
+
+refresh_display()
 
 root.mainloop()
