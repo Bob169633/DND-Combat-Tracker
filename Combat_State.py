@@ -41,6 +41,19 @@ class CombatState:
     else:
       self.curr = 0
 
+  def remove_character_at_index(self, index):
+    if index < 0 or index >= len(self.combat):
+      return
+
+    del self.combat[index]
+
+    if not self.combat:
+      self.curr = 0
+      return
+
+    if self.curr >= len(self.combat):
+      self.curr = 0
+
   def load_state(self, combat, round_number, current_turn_index, total_turns):
     self.combat = combat
     self.round = round_number

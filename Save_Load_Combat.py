@@ -19,8 +19,15 @@ def save_combat_to_csv(filepath, state):
       "total_turns",
       "name",
       "character_type",
+      "initiative_bonus",
       "initiative",
-      "statuses"
+      "max_hp",
+      "current_hp",
+      "death_successes",
+      "death_fails",
+      "dead",
+      "statuses",
+      "permanent_statuses"
     ])
 
     writer.writerow([
@@ -28,6 +35,13 @@ def save_combat_to_csv(filepath, state):
       state.round,
       state.curr,
       state.turns,
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
       "",
       "",
       "",
@@ -42,8 +56,15 @@ def save_combat_to_csv(filepath, state):
         "",
         char.name,
         char.chType,
+        getattr(char, "bonus", 0),
         char.initiative,
-        json.dumps(char.status)
+        getattr(char, "max_hp", ""),
+        getattr(char, "current_hp", ""),
+        getattr(char, "death_successes", 0),
+        getattr(char, "death_fails", 0),
+        getattr(char, "dead", False),
+        json.dumps(getattr(char, "status", [])),
+        json.dumps(getattr(char, "permanent_statuses", []))
       ])
 
 
@@ -57,20 +78,52 @@ def load_combat_from_csv(filepath):
     reader = csv.DictReader(file)
 
     for row in reader:
-      if row["row_type"] == META_ROW:
-        loaded_round = int(row["round"])
-        loaded_curr = int(row["current_turn_index"])
-        loaded_turns = int(row["total_turns"])
+      if row.get("row_type") == META_ROW:
+        loaded_round = int(row.get("round", 1) or 1)
+        loaded_curr = int(row.get("current_turn_index", 0) or 0)
+        loaded_turns = int(row.get("total_turns", 0) or 0)
 
-      elif row["row_type"] == CHAR_ROW:
-        name = row["name"]
-        chType = row["character_type"]
-        initiative = float(row["initiative"])
-        statuses = json.loads(row["statuses"]) if row["statuses"] else []
+      elif row.get("row_type") == CHAR_ROW:
+        name = row.get("name", "")
+        chType = row.get("character_type", "")
 
-        char = createChar(name, chType, 0, initiative)
+        try:
+          bonus = int(row.get("initiative_bonus", 0))
+        except ValueError:
+          bonus = 0
+
+        try:
+          initiative = float(row.get("initiative", 0) or 0)
+        except ValueError:
+          initiative = 0
+
+        max_hp = row.get("max_hp", "")
+        current_hp = row.get("current_hp", "")
+
+        try:
+          statuses = json.loads(row.get("statuses", "[]") or "[]")
+        except json.JSONDecodeError:
+          statuses = []
+
+        try:
+          permanent_statuses = json.loads(row.get("permanent_statuses", "[]") or "[]")
+        except json.JSONDecodeError:
+          permanent_statuses = []
+
+        char = createChar(
+          name=name,
+          chType=chType,
+          bonus=bonus,
+          initiative=initiative,
+          max_hp=max_hp,
+          current_hp=current_hp,
+          permanent_statuses=permanent_statuses
+        )
         char.initiative = initiative
         char.status = statuses
+        char.death_successes = int(row.get("death_successes", 0) or 0)
+        char.death_fails = int(row.get("death_fails", 0) or 0)
+        char.dead = row.get("dead", "False") == "True"
 
         combat.append(char)
 

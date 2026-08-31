@@ -3,24 +3,74 @@ import tkinter as tk
 from tkinter import messagebox
 
 from Create_Chars import createChar
+from Roll_HP import roll_hp_formula
 
 
-VALID_TYPES = ["PC", "NPC", "EN", "LA"]
+VALID_TYPES = ["PC", "SPC", "NPC", "EN", "LA"]
+
+COLUMN_WIDTHS = {
+  "name": 160,
+  "type": 80,
+  "bonus": 80,
+  "initiative": 80,
+  "count": 70,
+  "hp": 90,
+  "current_hp": 90
+}
 
 
 class AddCharactersWindow:
-  def __init__(self, root, on_add_characters):
+  def __init__(self, root, on_add_characters, background_color="black", mouse_x=None, mouse_y=None):
     self.root = root
     self.on_add_characters = on_add_characters
+    self.background_color = background_color
     self.rows = []
 
     self.window = tk.Toplevel(root)
     self.window.title("Add Characters")
-    self.window.geometry("780x500")
+    self.window.geometry("980x500")
+    self.window.configure(bg=self.background_color)
     self.window.grab_set()
 
     self.build_window()
+    self.place_window_at_mouse(mouse_x, mouse_y)
     self.grab_window_attention()
+
+  def place_window_at_mouse(self, mouse_x=None, mouse_y=None):
+    if mouse_x is None or mouse_y is None:
+      return
+
+    self.window.update_idletasks()
+
+    window_width = self.window.winfo_reqwidth()
+    window_height = self.window.winfo_reqheight()
+
+    virtual_x = self.window.winfo_vrootx()
+    virtual_y = self.window.winfo_vrooty()
+    virtual_width = self.window.winfo_vrootwidth()
+    virtual_height = self.window.winfo_vrootheight()
+
+    x = mouse_x + 20
+    y = mouse_y + 20
+
+    min_x = virtual_x
+    min_y = virtual_y
+    max_x = virtual_x + virtual_width - window_width
+    max_y = virtual_y + virtual_height - window_height
+
+    if x > max_x:
+      x = max_x
+
+    if y > max_y:
+      y = max_y
+
+    if x < min_x:
+      x = min_x
+
+    if y < min_y:
+      y = min_y
+
+    self.window.geometry(f"+{x}+{y}")
 
   def grab_window_attention(self):
     self.window.lift()
@@ -28,11 +78,37 @@ class AddCharactersWindow:
     self.window.attributes("-topmost", True)
     self.window.after(250, lambda: self.window.attributes("-topmost", False))
 
+  def make_cell(self, parent, width, height=30):
+    cell = tk.Frame(
+      parent,
+      width=width,
+      height=height,
+      bg=self.background_color
+    )
+    cell.pack(side=tk.LEFT, padx=2, pady=2)
+    cell.pack_propagate(False)
+    return cell
+
+  def make_label(self, parent, text):
+    label = tk.Label(
+      parent,
+      text=text,
+      anchor="center",
+      bg=self.background_color,
+      fg="white"
+    )
+    return label
+
   def build_window(self):
-    top_frame = tk.Frame(self.window)
+    top_frame = tk.Frame(self.window, bg=self.background_color)
     top_frame.pack(fill=tk.X, padx=10, pady=10)
 
-    tk.Label(top_frame, text="Number of character entries:").pack(side=tk.LEFT)
+    tk.Label(
+      top_frame,
+      text="Number of character entries:",
+      bg=self.background_color,
+      fg="white"
+    ).pack(side=tk.LEFT)
 
     self.entry_count_var = tk.StringVar(value="1")
 
@@ -50,17 +126,21 @@ class AddCharactersWindow:
     )
     build_button.pack(side=tk.LEFT, padx=5)
 
-    self.entries_canvas_outer = tk.Frame(self.window)
+    self.entries_canvas_outer = tk.Frame(self.window, bg=self.background_color)
     self.entries_canvas_outer.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
 
-    self.entries_canvas = tk.Canvas(self.entries_canvas_outer)
+    self.entries_canvas = tk.Canvas(
+      self.entries_canvas_outer,
+      bg=self.background_color,
+      highlightthickness=0
+    )
     self.entries_scrollbar = tk.Scrollbar(
       self.entries_canvas_outer,
       orient=tk.VERTICAL,
       command=self.entries_canvas.yview
     )
 
-    self.entries_frame = tk.Frame(self.entries_canvas)
+    self.entries_frame = tk.Frame(self.entries_canvas, bg=self.background_color)
 
     self.entries_frame.bind(
       "<Configure>",
@@ -78,7 +158,7 @@ class AddCharactersWindow:
     self.entries_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
     self.entries_canvas.bind("<Configure>", self.resize_entries_frame)
 
-    bottom_frame = tk.Frame(self.window)
+    bottom_frame = tk.Frame(self.window, bg=self.background_color)
     bottom_frame.pack(fill=tk.X, padx=10, pady=10)
 
     add_button = tk.Button(
@@ -116,17 +196,21 @@ class AddCharactersWindow:
       messagebox.showerror("Invalid Entry Count", "Number of character entries must be at least 1.")
       return
 
-    header = tk.Frame(self.entries_frame)
+    header = tk.Frame(self.entries_frame, bg=self.background_color)
     header.pack(fill=tk.X, pady=2)
 
-    tk.Label(header, text="Name", width=24, anchor="w").pack(side=tk.LEFT)
-    tk.Label(header, text="Type", width=10, anchor="w").pack(side=tk.LEFT)
-    tk.Label(header, text="Init Bonus", width=12, anchor="w").pack(side=tk.LEFT)
-    tk.Label(header, text="Init Roll", width=12, anchor="w").pack(side=tk.LEFT)
-    tk.Label(header, text="Count", width=10, anchor="w").pack(side=tk.LEFT)
+    self.make_label(self.make_cell(header, COLUMN_WIDTHS["name"]), "Name").pack(fill=tk.BOTH, expand=True)
+    self.make_label(self.make_cell(header, COLUMN_WIDTHS["type"]), "Type").pack(fill=tk.BOTH, expand=True)
+    self.make_label(self.make_cell(header, COLUMN_WIDTHS["bonus"]), "Init Bonus").pack(fill=tk.BOTH, expand=True)
+    self.make_label(self.make_cell(header, COLUMN_WIDTHS["initiative"]), "Init Roll").pack(fill=tk.BOTH, expand=True)
+    self.make_label(self.make_cell(header, COLUMN_WIDTHS["count"]), "Count").pack(fill=tk.BOTH, expand=True)
+    self.make_label(self.make_cell(header, COLUMN_WIDTHS["hp"]), "HP / Formula").pack(fill=tk.BOTH, expand=True)
+    self.make_label(self.make_cell(header, COLUMN_WIDTHS["current_hp"]), "Current HP").pack(fill=tk.BOTH, expand=True)
+
+    first_entry = None
 
     for index in range(entry_count):
-      row_frame = tk.Frame(self.entries_frame)
+      row_frame = tk.Frame(self.entries_frame, bg=self.background_color)
       row_frame.pack(fill=tk.X, pady=2)
 
       name_var = tk.StringVar()
@@ -134,34 +218,51 @@ class AddCharactersWindow:
       bonus_var = tk.StringVar(value="0")
       initiative_var = tk.StringVar(value="")
       count_var = tk.StringVar(value="1")
+      hp_formula_var = tk.StringVar(value="")
+      current_hp_var = tk.StringVar(value="")
 
-      name_entry = tk.Entry(row_frame, textvariable=name_var, width=26)
-      name_entry.pack(side=tk.LEFT, padx=2)
+      name_cell = self.make_cell(row_frame, COLUMN_WIDTHS["name"])
+      name_entry = tk.Entry(name_cell, textvariable=name_var)
+      name_entry.pack(fill=tk.BOTH, expand=True)
 
-      type_menu = tk.OptionMenu(row_frame, type_var, *VALID_TYPES)
-      type_menu.config(width=6)
-      type_menu.pack(side=tk.LEFT, padx=2)
+      if first_entry is None:
+        first_entry = name_entry
 
-      bonus_entry = tk.Entry(row_frame, textvariable=bonus_var, width=10)
-      bonus_entry.pack(side=tk.LEFT, padx=2)
+      type_cell = self.make_cell(row_frame, COLUMN_WIDTHS["type"])
+      type_menu = tk.OptionMenu(type_cell, type_var, *VALID_TYPES)
+      type_menu.pack(fill=tk.BOTH, expand=True)
 
-      initiative_entry = tk.Entry(row_frame, textvariable=initiative_var, width=10)
-      initiative_entry.pack(side=tk.LEFT, padx=2)
+      bonus_cell = self.make_cell(row_frame, COLUMN_WIDTHS["bonus"])
+      bonus_entry = tk.Entry(bonus_cell, textvariable=bonus_var)
+      bonus_entry.pack(fill=tk.BOTH, expand=True)
 
-      count_entry = tk.Entry(row_frame, textvariable=count_var, width=8)
-      count_entry.pack(side=tk.LEFT, padx=2)
+      initiative_cell = self.make_cell(row_frame, COLUMN_WIDTHS["initiative"])
+      initiative_entry = tk.Entry(initiative_cell, textvariable=initiative_var)
+      initiative_entry.pack(fill=tk.BOTH, expand=True)
+
+      count_cell = self.make_cell(row_frame, COLUMN_WIDTHS["count"])
+      count_entry = tk.Entry(count_cell, textvariable=count_var)
+      count_entry.pack(fill=tk.BOTH, expand=True)
+
+      hp_cell = self.make_cell(row_frame, COLUMN_WIDTHS["hp"])
+      hp_formula_entry = tk.Entry(hp_cell, textvariable=hp_formula_var)
+      hp_formula_entry.pack(fill=tk.BOTH, expand=True)
+
+      current_hp_cell = self.make_cell(row_frame, COLUMN_WIDTHS["current_hp"])
+      current_hp_entry = tk.Entry(current_hp_cell, textvariable=current_hp_var)
+      current_hp_entry.pack(fill=tk.BOTH, expand=True)
 
       self.rows.append({
         "name": name_var,
         "type": type_var,
         "bonus": bonus_var,
         "initiative": initiative_var,
-        "count": count_var
+        "count": count_var,
+        "hp_formula": hp_formula_var,
+        "current_hp": current_hp_var
       })
 
-    if self.rows:
-      first_row = self.entries_frame.winfo_children()[1]
-      first_entry = first_row.winfo_children()[0]
+    if first_entry is not None:
       first_entry.focus_set()
 
   def add_characters(self):
@@ -206,6 +307,12 @@ class AddCharactersWindow:
         messagebox.showerror("Invalid Count", f"{name} must have a count of at least 1.")
         return
 
+      hp_text = row["hp_formula"].get().strip()
+      current_hp_text = row["current_hp"].get().strip()
+
+      uses_direct_hp = chType in ["PC", "SPC"]
+      uses_formula_hp = chType in ["NPC", "EN"]
+
       for creature_number in range(1, count + 1):
         if chType == "LA":
           initiative_roll = 20
@@ -219,8 +326,60 @@ class AddCharactersWindow:
         else:
           final_name = f"{name} {creature_number}"
 
+        max_hp = ""
+        current_hp = ""
+
+        if uses_direct_hp:
+          if hp_text:
+            try:
+              max_hp = int(hp_text)
+            except ValueError:
+              messagebox.showerror("Invalid HP", f"{name} needs a whole-number HP value.")
+              return
+
+            current_hp = max_hp
+
+          elif current_hp_text:
+            try:
+              max_hp = int(current_hp_text)
+              current_hp = max_hp
+            except ValueError:
+              messagebox.showerror("Invalid HP", f"{name} needs a whole-number HP value.")
+              return
+
+          if current_hp_text and hp_text:
+            try:
+              current_hp = int(current_hp_text)
+            except ValueError:
+              messagebox.showerror("Invalid Current HP", f"{name} has an invalid current HP.")
+              return
+
+        elif uses_formula_hp:
+          if hp_text:
+            try:
+              max_hp = roll_hp_formula(hp_text)
+            except ValueError as error:
+              messagebox.showerror("Invalid HP Formula", f"{name}: {error}")
+              return
+
+            current_hp = max_hp
+
+          if current_hp_text:
+            try:
+              current_hp = int(current_hp_text)
+            except ValueError:
+              messagebox.showerror("Invalid Current HP", f"{name} has an invalid current HP.")
+              return
+
         characters_to_add.append(
-          createChar(final_name, chType, bonus, initiative_roll)
+          createChar(
+            final_name,
+            chType,
+            bonus,
+            initiative_roll,
+            max_hp=max_hp,
+            current_hp=current_hp
+          )
         )
 
     self.on_add_characters(characters_to_add)
