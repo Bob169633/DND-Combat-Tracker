@@ -15,7 +15,8 @@ COLUMN_WIDTHS = {
   "initiative": 80,
   "count": 70,
   "hp": 90,
-  "current_hp": 90
+  "current_hp": 90,
+  "temp_hp": 80
 }
 
 
@@ -28,7 +29,7 @@ class AddCharactersWindow:
 
     self.window = tk.Toplevel(root)
     self.window.title("Add Characters")
-    self.window.geometry("980x500")
+    self.window.geometry("1080x500")
     self.window.configure(bg=self.background_color)
     self.window.grab_set()
 
@@ -78,14 +79,14 @@ class AddCharactersWindow:
     self.window.attributes("-topmost", True)
     self.window.after(250, lambda: self.window.attributes("-topmost", False))
 
-  def make_cell(self, parent, width, height=30):
+  def make_cell(self, parent, width, height=34):
     cell = tk.Frame(
       parent,
       width=width,
       height=height,
       bg=self.background_color
     )
-    cell.pack(side=tk.LEFT, padx=2, pady=2)
+    cell.pack(side=tk.LEFT, padx=2)
     cell.pack_propagate(False)
     return cell
 
@@ -196,22 +197,33 @@ class AddCharactersWindow:
       messagebox.showerror("Invalid Entry Count", "Number of character entries must be at least 1.")
       return
 
-    header = tk.Frame(self.entries_frame, bg=self.background_color)
+    header = tk.Frame(
+      self.entries_frame,
+      bg=self.background_color,
+      height=34
+    )
     header.pack(fill=tk.X, pady=2)
+    header.pack_propagate(False)
 
-    self.make_label(self.make_cell(header, COLUMN_WIDTHS["name"]), "Name").pack(fill=tk.BOTH, expand=True)
-    self.make_label(self.make_cell(header, COLUMN_WIDTHS["type"]), "Type").pack(fill=tk.BOTH, expand=True)
-    self.make_label(self.make_cell(header, COLUMN_WIDTHS["bonus"]), "Init Bonus").pack(fill=tk.BOTH, expand=True)
-    self.make_label(self.make_cell(header, COLUMN_WIDTHS["initiative"]), "Init Roll").pack(fill=tk.BOTH, expand=True)
-    self.make_label(self.make_cell(header, COLUMN_WIDTHS["count"]), "Count").pack(fill=tk.BOTH, expand=True)
-    self.make_label(self.make_cell(header, COLUMN_WIDTHS["hp"]), "HP / Formula").pack(fill=tk.BOTH, expand=True)
-    self.make_label(self.make_cell(header, COLUMN_WIDTHS["current_hp"]), "Current HP").pack(fill=tk.BOTH, expand=True)
+    self.make_label(self.make_cell(header, COLUMN_WIDTHS["name"]), "Name").pack(fill=tk.X)
+    self.make_label(self.make_cell(header, COLUMN_WIDTHS["type"]), "Type").pack(fill=tk.X)
+    self.make_label(self.make_cell(header, COLUMN_WIDTHS["bonus"]), "Init Bonus").pack(fill=tk.X)
+    self.make_label(self.make_cell(header, COLUMN_WIDTHS["initiative"]), "Init Roll").pack(fill=tk.X)
+    self.make_label(self.make_cell(header, COLUMN_WIDTHS["count"]), "Count").pack(fill=tk.X)
+    self.make_label(self.make_cell(header, COLUMN_WIDTHS["hp"]), "HP / Formula").pack(fill=tk.X)
+    self.make_label(self.make_cell(header, COLUMN_WIDTHS["current_hp"]), "Current HP").pack(fill=tk.X)
+    self.make_label(self.make_cell(header, COLUMN_WIDTHS["temp_hp"]), "Temp HP").pack(fill=tk.X)
 
     first_entry = None
 
     for index in range(entry_count):
-      row_frame = tk.Frame(self.entries_frame, bg=self.background_color)
+      row_frame = tk.Frame(
+        self.entries_frame,
+        bg=self.background_color,
+        height=38
+      )
       row_frame.pack(fill=tk.X, pady=2)
+      row_frame.pack_propagate(False)
 
       name_var = tk.StringVar()
       type_var = tk.StringVar(value="EN")
@@ -220,6 +232,7 @@ class AddCharactersWindow:
       count_var = tk.StringVar(value="1")
       hp_formula_var = tk.StringVar(value="")
       current_hp_var = tk.StringVar(value="")
+      temp_hp_var = tk.StringVar(value="0")
 
       name_cell = self.make_cell(row_frame, COLUMN_WIDTHS["name"])
       name_entry = tk.Entry(name_cell, textvariable=name_var)
@@ -230,7 +243,7 @@ class AddCharactersWindow:
 
       type_cell = self.make_cell(row_frame, COLUMN_WIDTHS["type"])
       type_menu = tk.OptionMenu(type_cell, type_var, *VALID_TYPES)
-      type_menu.pack(fill=tk.BOTH, expand=True)
+      type_menu.pack(fill=tk.X)
 
       bonus_cell = self.make_cell(row_frame, COLUMN_WIDTHS["bonus"])
       bonus_entry = tk.Entry(bonus_cell, textvariable=bonus_var)
@@ -252,6 +265,10 @@ class AddCharactersWindow:
       current_hp_entry = tk.Entry(current_hp_cell, textvariable=current_hp_var)
       current_hp_entry.pack(fill=tk.BOTH, expand=True)
 
+      temp_hp_cell = self.make_cell(row_frame, COLUMN_WIDTHS["temp_hp"])
+      temp_hp_entry = tk.Entry(temp_hp_cell, textvariable=temp_hp_var)
+      temp_hp_entry.pack(fill=tk.BOTH, expand=True)
+
       self.rows.append({
         "name": name_var,
         "type": type_var,
@@ -259,7 +276,8 @@ class AddCharactersWindow:
         "initiative": initiative_var,
         "count": count_var,
         "hp_formula": hp_formula_var,
-        "current_hp": current_hp_var
+        "current_hp": current_hp_var,
+        "temp_hp": temp_hp_var
       })
 
     if first_entry is not None:
@@ -309,6 +327,20 @@ class AddCharactersWindow:
 
       hp_text = row["hp_formula"].get().strip()
       current_hp_text = row["current_hp"].get().strip()
+      temp_hp_text = row["temp_hp"].get().strip()
+
+      try:
+        temp_hp = int(temp_hp_text) if temp_hp_text else 0
+      except ValueError:
+        messagebox.showerror("Invalid Temp HP", f"{name} has an invalid Temp HP value.")
+        return
+
+      if temp_hp < 0:
+        messagebox.showerror("Invalid Temp HP", f"{name} cannot have negative Temp HP.")
+        return
+
+      if chType == "LA":
+        temp_hp = 0
 
       uses_direct_hp = chType in ["PC", "SPC"]
       uses_formula_hp = chType in ["NPC", "EN"]
@@ -378,7 +410,8 @@ class AddCharactersWindow:
             bonus,
             initiative_roll,
             max_hp=max_hp,
-            current_hp=current_hp
+            current_hp=current_hp,
+            temp_hp=temp_hp
           )
         )
 

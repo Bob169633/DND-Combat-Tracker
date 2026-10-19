@@ -1,4 +1,5 @@
 import math as m
+import uuid
 
 t = "\t"
 
@@ -12,7 +13,11 @@ class character:
     initiative,
     max_hp="",
     current_hp="",
-    permanent_statuses=None
+    permanent_statuses=None,
+    combat_id=None,
+    card_background="",
+    temp_hp=0,
+    theme_audio=""
   ):
     self.name = name
     self.chType = chType
@@ -24,8 +29,17 @@ class character:
     self.death_fails = 0
     self.dead = False
     self.permanent_statuses = list(permanent_statuses or [])
+    self.combat_id = combat_id or str(uuid.uuid4())
+    self.card_background = card_background or ""
+    self.theme_audio = theme_audio or ""
+
+    try:
+      self.temp_hp = max(0, int(temp_hp or 0))
+    except (TypeError, ValueError):
+      self.temp_hp = 0
 
     if chType == "LA":
+      self.temp_hp = 0
       initiative = 20
 
     self.initiative = initiative + bonus if initiative + bonus > 0 else 0
@@ -41,7 +55,11 @@ def createChar(
   initiative=0,
   max_hp="",
   current_hp="",
-  permanent_statuses=None
+  permanent_statuses=None,
+  combat_id=None,
+  card_background="",
+  temp_hp=0,
+  theme_audio=""
 ):
   return character(
     name,
@@ -50,5 +68,9 @@ def createChar(
     initiative,
     max_hp,
     current_hp,
-    permanent_statuses
+    permanent_statuses,
+    combat_id,
+    card_background,
+    temp_hp,
+    theme_audio
   )

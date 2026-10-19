@@ -1,283 +1,55 @@
 # DND Combat Tracker
 
-A Python/Tkinter combat tracker designed for running tabletop RPG combat with initiative ordering, character cards, HP tracking, status effects, death saves, player character saving/loading, and permanent equipment-based effects.
+A Python/Tkinter combat tracker for running tabletop RPG encounters. It manages initiative, character cards, hit points, temporary and permanent status effects, death saves, saved player profiles, and a read-only player website. The tracker also supports character theme music, custom sound playback, and gradual Windows system-volume adjustments.
 
----
+## Requirements and setup
 
-## Features
+- **Python 3** on Windows (the Windows master-volume features specifically require Windows).
+- **Pillow** for image backgrounds and previews.
+- **pygame** for theme and custom audio playback.
+- **pycaw** and **comtypes** for Windows master-volume control.
+- **qrcode** (with Pillow) for the player-website QR code.
 
-### Combat Initiative Tracking
-- Add player characters, special player characters, NPCs, enemies, and lair actions to combat.
-- Automatically sorts combatants by initiative.
-- Tracks the current round, current turn, and total turn count.
-- Highlights the active character on the combat display.
-- Move to the next character with one button.
-- Return the combat list to initiative order after manual rearranging.
+Install the main optional/third-party dependencies using the Python interpreter that runs the tracker:
 
----
+```powershell
+python -m pip install pillow pygame pycaw comtypes "qrcode[pil]"
+```
 
-### Supported Character Types
-- **PC**: Player Character
-- **SPC**: Special Player Character
-- **NPC**: Non-Player Character
-- **EN**: Enemy
-- **LA**: Lair Action
+`tkinter`, `csv`, and the built-in HTTP server are provided with standard Python distributions that include Tk support. For packaged executables, the required libraries must be included when building the application.
 
-Lair actions automatically use initiative 20.
+Start the application with:
 
----
+```powershell
+python DND_Combat_Tracker.py
+```
 
-### Manual Character Entry
-- Add one or multiple characters at once.
-- Enter a character name, type, initiative bonus, initiative roll, count, HP/formula, and current HP.
-- Leave initiative blank to automatically roll initiative.
-- Use count to quickly add multiple copies of the same enemy.
-- Multiple enemies are automatically numbered when count is greater than 1.
+The application opens fullscreen and allows a choice between visible control buttons and hotkey-oriented operation.
 
----
+## Combat and initiative
 
-### HP Tracking
-- Tracks current HP and maximum HP.
-- Click a character’s HP on their card to open the HP adjustment window.
-- Apply damage or healing from the HP popup.
-- HP cannot exceed maximum HP.
-- HP cannot go below 0.
+- Add multiple combatants, including duplicate enemies in a single operation.
+- Roll initiative automatically when an initiative-roll field is left blank; initiative bonuses are supported.
+- Sort combatants by initiative; manually drag cards to reorganize the order and restore the original initiative sort when needed.
+- Track rounds, current turns, and total turns, with the active character visually highlighted.
+- Clear the encounter and reset round/turn counts together with **Ctrl+Delete**, after confirmation.
+- **Lair Actions (LA)** use initiative **20**; LA stands for *Lair Action*, not Legendary Action.
 
----
+### Character types
 
-### Enemy and NPC Removal
-- NPCs and enemies are automatically removed from combat when reduced to 0 HP.
-- Player characters and special player characters remain in combat at 0 HP for death save tracking.
+| Type | Meaning | HP behavior |
+| --- | --- | --- |
+| `PC` | Player Character | Retains death-save controls at 0 HP |
+| `SPC` | Special Player Character | Retains death-save controls at 0 HP |
+| `NPC` | Non-Player Character | Removed when reduced to 0 HP |
+| `EN` | Enemy | Removed when reduced to 0 HP |
+| `LA` | Lair Action | No HP or Temp HP |
 
----
+### Adding characters
 
-### Death Save Tracking
-- Player characters and special player characters at 0 HP display death save controls.
-- Supports:
-  - Stabilize
-  - Critical Success
-  - Success
-  - Failure
-  - Critical Failure
-- Three successes restore the character to 1 HP.
-- Three failures remove the character from combat.
-- Critical success restores the character to 1 HP.
-- Stabilize restores the character to 1 HP.
-- Critical failure adds two failed death saves.
+The Add Characters popup supports name, character type, initiative bonus, initiative roll, count, HP or HP formula, current HP, and **Temp HP**. PCs/SPCs use direct HP values, while NPCs/enemies can use a numeric value or dice formula. Multiple copies receive numbered names. Empty Temp HP fields default to **0**.
 
----
-
-### Temporary Status Effects
-- Add temporary status effects to any character in combat.
-- Set the number of rounds each status lasts.
-- Temporary statuses automatically tick down based on the turn they were applied on.
-- Temporary statuses are removed when their duration reaches 0.
-- Temporary statuses display directly on the character’s combat card.
-- Hover over a status to see when it ends.
-- Remove temporary statuses manually from the character card.
-
----
-
-### Permanent Status Effects
-- Add permanent statuses to characters for long-term equipment, passive effects, or persistent abilities.
-- Permanent statuses are stored on the character instead of only the current combat.
-- Permanent statuses can be saved with player characters and loaded into future combats.
-- Permanent statuses can have automatic start-turn or end-turn effects.
-- Supported permanent effect triggers:
-  - None
-  - Start of turn
-  - End of turn
-- Supported permanent effect types:
-  - None
-  - Heal
-  - Damage
-- Example permanent effect:
-  - Ring of Regeneration
-  - Trigger: Start of turn
-  - Effect: Heal
-  - Amount: 1
-- Permanent statuses display separately from temporary statuses on character cards.
-- Permanent statuses can be removed manually from the character card.
-
----
-
-### Automatic Permanent Effects
-- Permanent statuses can automatically apply healing or damage.
-- Start-turn effects trigger when the character becomes the active turn.
-- End-turn effects trigger before moving away from the current character.
-- Healing effects respect the character’s maximum HP.
-- Damage effects cannot reduce HP below 0.
-- Automatic damage can trigger the normal 0 HP behavior.
-
----
-
-### Player Character Saving
-- Save all PC and SPC characters to a CSV file.
-- Saved player characters include:
-  - Name
-  - Character type
-  - Initiative bonus
-  - Maximum HP
-  - Current HP
-  - Permanent statuses
-- Temporary combat statuses are not saved as part of player character profiles.
-
----
-
-### Player Character Loading
-- Load saved player characters from a CSV file.
-- Loaded players open in a review window before being added to combat.
-- Initiative bonuses are automatically loaded.
-- Current HP can be edited before adding the characters to combat.
-- Initiative rolls can be entered before adding the characters to combat.
-- Leaving initiative blank automatically rolls initiative.
-- Permanent statuses load with the character.
-
----
-
-### Combat Saving and Loading
-- Save the full current combat to a CSV file.
-- Load a previously saved combat.
-- Saved combat includes:
-  - Round number
-  - Current turn index
-  - Total turn count
-  - Character list
-  - Initiative values
-  - HP values
-  - Death save progress
-  - Temporary statuses
-  - Permanent statuses
-
----
-
-### Drag-and-Drop Reordering
-- Manually reorder character cards by dragging them.
-- Dragging uses a short hold delay to prevent accidental movement.
-- Reordering preserves the current active character.
-- The combat list can be restored to initiative order at any time.
-
----
-
-### Card-Based Combat Display
-- Each combatant is shown as a large card.
-- Cards display:
-  - Character name
-  - Initiative
-  - Character type
-  - Current HP and maximum HP
-  - Death saves when applicable
-  - Temporary statuses
-  - Permanent statuses
-- The active character is marked on their card.
-- Cards automatically wrap based on available window width.
-
----
-
-### Custom Background Colors
-- Change the tracker background color from a dropdown.
-- Background color applies to the main window.
-- Popup windows use the selected background color.
-
----
-
-### Custom Fonts
-- Change the card name/title font from a dropdown.
-- Font changes apply to combat cards immediately.
-
----
-
-### Popup Windows
-- Add Characters, Add Statuses, Load Players, and HP adjustment open in separate popup windows.
-- Popup windows use the current selected background color.
-- Popup windows are designed to open near the mouse position.
-
----
-
-### Scrollable Combat View
-- Combat cards are displayed in a scrollable area.
-- The display prevents scrolling past the top or bottom of the combat area.
-- The combat view resets to the top after refreshing.
-
----
-
-### Optional Border Image
-- The combat cards can use a custom border image.
-- Supported border filenames:
-  - `border.jpg`
-  - `border.jpeg`
-  - `border.png`
-- The border image should be placed in the same folder as `DND_Combat_Tracker.py`.
-
----
-
-## File Overview
-
-### Main Program
-- `DND_Combat_Tracker.py`
-  - Main application file.
-  - Builds the main window.
-  - Connects all buttons, windows, combat state, saving/loading, HP, statuses, and display refreshes.
-
-### Character Creation
-- `Create_Chars.py`
-  - Defines the character object.
-  - Stores name, type, initiative bonus, initiative, HP, death saves, temporary statuses, and permanent statuses.
-
-### Combat State
-- `Combat_State.py`
-  - Stores the active combat list.
-  - Handles sorting, turn order, round tracking, and manual reordering.
-
-### Combat Display
-- `Display_Combat.py`
-  - Draws the combat cards.
-  - Handles scrolling, drag-and-drop reordering, status display, HP clicking, death save buttons, and card layout.
-
-### Add Characters Window
-- `Add_Characters_Window.py`
-  - Popup for manually adding characters to combat.
-  - Supports multiple entries, initiative rolls, HP, formulas, and enemy counts.
-
-### Load Players Window
-- `Load_Players_Window.py`
-  - Popup for reviewing saved player characters before adding them to combat.
-  - Allows current HP and initiative rolls to be entered before combat begins.
-
-### HP Window
-- `HP_Window.py`
-  - Popup for applying damage or healing to a character.
-
-### Status Window
-- `Status_Window.py`
-  - Popup for adding temporary and permanent statuses.
-  - Supports permanent status triggers and automatic effects.
-
-### Status Effects
-- `Status_Effects.py`
-  - Handles temporary status tracking.
-  - Handles permanent status storage, removal, display text, and automatic healing/damage effects.
-
-### Combat Save/Load
-- `Save_Load_Combat.py`
-  - Saves and loads full combat state.
-
-### Player Save/Load
-- `Player_Storage.py`
-  - Saves and loads PC/SPC character profiles.
-
-### HP Rolling
-- `Roll_HP.py`
-  - Rolls HP formulas for enemies and NPCs.
-  - Supports direct HP numbers and dice formulas.
-
----
-
-## HP Formula Examples
-
-Enemy and NPC HP can be entered as a number or dice formula.
-
-Examples:
+Example HP entries:
 
 ```text
 12
@@ -285,3 +57,176 @@ d6+1
 1d8+2
 2d8+6
 4d10+20
+```
+
+## Hit points and death saves
+
+- Track **maximum HP**, **current HP**, and **temporary HP** for every non-Lair character.
+- Click the HP area of a card to open the damage/healing popup or adjust Temp HP.
+- **Damage removes Temp HP first**, and any remaining damage reduces current HP.
+- Healing restores current HP, capped at maximum HP; it does not replenish Temp HP.
+- The bloodied indicator depends on **current HP at or below half of maximum HP**, not on Temp HP.
+- PC/SPC characters at 0 HP show controls for **Stabilize**, **Critical Success**, **Success**, **Failure**, and **Critical Failure**.
+- Three successes, a critical success, or stabilization restore a PC/SPC to 1 HP in this tracker; three failures remove the character, and a critical failure adds two failures.
+
+## Status effects
+
+Statuses can be applied to a selected target and linked to a selected **caster/trigger character**. The Add Statuses popup includes:
+
+`Caster | Status | Duration | Target | Effect Trigger | Permanent | Amount | Effect`
+
+- **Temporary statuses** count down on the selected character's **start** or **end** of turn, rather than relying on initiative positions. This remains consistent after manual initiative reordering.
+- The end of the caster's current turn can count as the first end-of-turn trigger.
+- **Permanent statuses** continue until removed and can be retained with player profiles.
+- Both temporary and permanent statuses can perform an automatic effect at their specified trigger: **None**, **Heal**, **Damage**, or **Temp HP**.
+- Damage effects consume Temp HP before actual HP; healing respects maximum HP.
+- Temp HP granted by status effects retains the higher of the existing amount and the new amount rather than adding the two amounts.
+- Status badges appear on combat cards; hover for expiration/trigger information or remove statuses manually.
+- Temporary durations are shown in **rounds**, even though their internal countdown follows the configured character's turn events.
+
+For example, a temporary Burning status could cause 5 damage at the end of a specified character's turn for 3 triggers; a permanent Ring of Regeneration could heal 1 HP at the start of each turn.
+
+## Saving and loading
+
+### Saved player profiles (PC/SPC)
+
+Save selected player-character information to CSV for reuse in later combats. Supported saved information includes name, character type, initiative bonus, max/current/Temp HP, permanent statuses, individual card background, and character theme audio path. **Temporary combat statuses do not become permanent player-profile data.**
+
+When loading players, the review window allows edits to:
+
+- Name and initiative bonus.
+- Maximum HP, current HP, and Temp HP (defaulting to 0 when not provided).
+- Initiative roll (blank rolls automatically).
+- Character theme/audio assignment.
+
+The **Reset Current HP to Max HP** button copies each player's displayed Max HP into their Current HP field before adding them to combat.
+
+### Combat saves
+
+Save and reload an encounter as CSV, including combatants and initiative, current round/turn counters, HP and Temp HP, death-save progress, temporary and permanent statuses, card-background assignments, and theme-audio assignments. Older saves without newly added fields generally default missing optional values; keep a backup before relying on compatibility with very old save formats.
+
+## Combat display and appearance
+
+- Large, scrollable, draggable combatant cards, wrapping to fit the window.
+- Active-turn indicator and flashing **bloodied** border at half HP or less.
+- Character information, status badges, and death-save controls displayed on cards as applicable.
+- Fullscreen background color or image, selectable fonts, and separate card-background images by character type.
+- **Individual PC/SPC card backgrounds** configured from the Player Card Backgrounds popup (**Ctrl+P**), with the normal PC/SPC image as fallback.
+- Image options from the local **`graphics/`** directory, as well as selected external image files; supported formats include `.png`, `.jpg`, `.jpeg`, and `.webp`.
+- Background previews in the relevant configuration dialogs, using the enlarged preview design.
+- Configuration includes campaign name and player-website settings, saved in `config.json` beside the application.
+
+## Player website (local network)
+
+The tracker can host a **read-only player view** using a local HTTP server. The server displays combat order, current turn/round, status effects, the configured background, and character-card images; it refreshes automatically as the DM changes combat.
+
+- Players can join from a browser on the same reachable network using the link or **QR code** provided by the tracker.
+- **PC/SPC exact HP and Temp HP** can be shown.
+- **NPC/enemy exact HP and Temp HP are hidden**; a flashing red border indicates bloodied status without displaying numerical HP.
+- The website is view-only: player devices do not edit combat state.
+- **Ctrl+W** opens the player website; **Ctrl+V** opens server/network status.
+- Port and enabled/disabled state are configurable (default port **8080**).
+
+Network access depends on routing, firewalls, and whether the Wi-Fi/hotspot isolates connected devices. A Windows Mobile Hotspot hosted on the tracker computer may be useful when the venue's network blocks device-to-device connections.
+
+## Audio Themes
+
+Open **Audio Themes** using **Ctrl+M** or its application button. This window supports:
+
+- A case-insensitive, alphabetically ordered list of current non-Lair characters.
+- A character-specific theme path and **Play**, **Stop**, **Choose**, and **Clear** controls.
+- Audio assignments saved with player profiles and combat saves.
+- A **Custom Audio** section to choose and play a sound without associating it with a character, useful for monster cries, environmental effects, and boss music.
+- Master **theme-playback** volume slider, a **Loop** option, **Stop All Audio**, and **Open Audio Folder**.
+- Playing a new track stops the currently playing track; only one track uses the theme playback channel at a time.
+- Non-looping playback fades during approximately the **last 3 seconds** when track duration is available; looping tracks do not fade between repeats.
+- Common files include `.mp3`, `.wav`, and `.ogg`.
+
+Place audio files in the project's **`audio/`** folder, which the program can create automatically. Files can also be selected from elsewhere on disk. Moving a referenced file may require assigning it again.
+
+### Windows system-volume automation
+
+The Audio Themes popup also has settings for independently adjusting the **Windows master volume** (not just the theme player's volume):
+
+- **Lower target %**, **Raise target %**, and **Duration (seconds)**.
+- **Save Volume Settings** to retain the automation settings.
+- **Ctrl+-** gradually moves the master volume down toward the lower target.
+- **Ctrl+Shift++** gradually moves the master volume up toward the raise target.
+- An active transition can be reversed by invoking the opposite direction; each stops on reaching the specified target.
+- Smooth changes use frequent, time-based volume updates, subject to the sound device's available resolution.
+
+- **Stop Volume Transition** immediately cancels any active master-volume change while leaving the current Windows volume unchanged and continuing audio playback.
+- The Audio Themes playback-volume slider defaults to **100%** when the tracker starts.
+
+## Hotkeys
+
+### Alphabetic
+
+| Hotkey | Action |
+| --- | --- |
+| Ctrl+E | Configuration |
+| Ctrl+H | Show hotkey help |
+| Ctrl+L | Load combat |
+| Ctrl+M | Audio Themes |
+| Ctrl+P | Player Card Backgrounds |
+| Ctrl+Q | Quit (confirmation) |
+| Ctrl+R | Refresh display |
+| Ctrl+S | Save combat |
+| Ctrl+V | Server Status |
+| Ctrl+W | Open player website |
+
+### Numeric
+
+| Hotkey | Action |
+| --- | --- |
+| Ctrl+0 | Return to original initiative sort |
+| Ctrl+1 | Add Characters |
+| Ctrl+2 | Add Statuses |
+| Ctrl+8 | Save Players |
+| Ctrl+9 | Load Players |
+
+### Special
+
+| Hotkey | Action |
+| --- | --- |
+| Ctrl+- | Decrease Windows volume gradually |
+| Ctrl+Shift++ | Increase Windows volume gradually |
+| Ctrl+Delete | Clear combat and reset round/turn counts |
+| Ctrl+Enter | Next character |
+| Ctrl+Space | Start combat |
+
+Keyboard behavior for `+` depends on the keyboard layout; the application also includes alternative key bindings for the increase command.
+
+## Project files
+
+| File | Purpose |
+| --- | --- |
+| `DND_Combat_Tracker.py` | Main application, window layout, callbacks, hotkeys, player-web state |
+| `Combat_State.py` | Combatant list, initiative ordering, round and turn state |
+| `Create_Chars.py` | Character objects and their saved properties |
+| `Add_Characters_Window.py` | Manual character entry |
+| `Load_Players_Window.py` | Review/edit saved PC/SPC profiles before combat |
+| `Player_Storage.py` | Player CSV persistence |
+| `Save_Load_Combat.py` | Combat CSV persistence |
+| `Display_Combat.py` | Cards, status badges, HP/death-save interactions, dragging and scrolling |
+| `HP_Window.py` | HP and Temp HP adjustments |
+| `Roll_HP.py` | Numeric and dice-formula HP rolling |
+| `Status_Window.py` | Temporary/permanent status entry |
+| `Status_Effects.py` | Status durations, trigger tracking, and automatic effects |
+| `Config_Window.py` | Application configuration popup |
+| `Config_Storage.py` | Persistent configuration values |
+| `Graphics_Options.py` | Background and image selection helpers |
+| `Player_Card_Backgrounds_Window.py` | Individual PC/SPC background selection |
+| `Player_Web_Server.py` | Local read-only browser view |
+| `Audio_Themes_Window.py` | Character themes, custom audio, playback and volume automation |
+| `graphics/` | Optional images for backgrounds and cards |
+| `audio/` | Optional character themes and custom sounds |
+| `config.json` | Generated/saved application settings |
+
+Other supporting modules may be present in a particular project version. Do not remove a module from an existing working installation solely because it is not listed above.
+
+## Notes
+
+- The program runs locally; player-browser access is intended for a trusted local network, not public internet exposure.
+- Audio processing scripts for extracting or altering elk/monster recordings (librosa, SciPy, noisereduce, FFmpeg) are separate utilities; they are **not required to run the combat tracker**.
+- Dependencies used to *create* audio are distinct from those needed for *playing* it in the tracker.
